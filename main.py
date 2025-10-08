@@ -1,6 +1,5 @@
 
 # Imports
-from time import sleep
 from keylogger_manager import KeyLogger
 
 # Main

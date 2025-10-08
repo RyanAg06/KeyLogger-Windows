@@ -1,8 +1,5 @@
 
 # Imports
-import email
-from fileinput import filename
-from pydoc import plain
 from ssl import create_default_context
 from json_manager import LeerJSON
 from email.message import EmailMessage
