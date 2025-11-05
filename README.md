@@ -17,7 +17,7 @@ KeyLogger Para Windows Desarrollado en Python con Parametros Personalizables Fac
 ### Dependencias
 Antes de Iniciar el Script es **OBLIGATORIO** Instalar las Dependencias para su Funcionamineto, solo Ejecuta este Comando para Instalarlas:
 ```python
-    pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 Una Vez Instaladas ya Puedes Ejecutar el Script y el Compilado
 
@@ -66,6 +66,6 @@ Se Necesita Escoger el Puerto por el Cual el Correo Sera Enviado,Hay Distintos P
 - **Puerto 25:** Este Puerto **NO** Tiene Cifrado, por lo que lo Hace Menos Seguro y Hace que los Servicios de Correo lo Tomen como SPAM y Causen **Correo Fallido en la Mayoria de Casos**
 
 ```
-    \____/\
-    /\  /\
+\____/\
+/\  /\
 ```
