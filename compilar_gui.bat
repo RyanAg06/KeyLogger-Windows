@@ -11,7 +11,8 @@ pyinstaller --noconfirm --onefile --icon "%currentDirectory%icon.ico" --name "%n
 :: Salida
 echo Limpiando Residuos...
 rmdir /s /q build
-powershell mv '%currentDirectory%dist' '%currentDirectory%output'
+move "%currentDirectory%dist\%nameScript%.exe" "%currentDirectory%%nameScript%.exe"
+rmdir /s /q dist
 del %nameScript%.spec
 echo Fin del Compilado
 

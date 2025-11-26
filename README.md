@@ -53,6 +53,9 @@ Al Tener el Tiempo de Inactividad a 0 el Modo de **hora_programada** se Activara
 Tambien es Posible Colocar una Hora Exacta **Combinando** Horas, Minutos y Segundos
 - **Ejemplo:** Enviar a las 10am con 30 Minutos y 15 Segundos → [10,30,15]
 
+### Enviar Periodicamente
+Este Modo Hara que se Envie Cada 'x' Minutos, Solo Rangos Entre (0, 59), para Activar este Modo Deja los demas Modos en 0 y se Activara
+
 ### Modo Caracteres Maximos
 Este Modo Es Independiente a los 2 Anteriores ya que en los Otros Modos solo se Puede Activar Uno, pero en Este Modo se Puede Activar o Desactivar si es que no lo Necesitas tan solo Poniendo el Parametro de `caracteres_maximos` a un Numero Negativo (-1). Cuando el Usuario Alcance la Cantidad de Caracteres Maximos Establecido se Enviara un Correo
 

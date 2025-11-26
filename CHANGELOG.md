@@ -8,3 +8,9 @@
 - Icono Falso Agregado para Mayor Discrecion
 - Se Agrego Archivo para Compilado
 - No Se Enviara si Log esta Vacio (EXCEPTO CIERRE FORZADO)
+
+# Version 2.2
+- Archivo para Inyeccion Automatica Agregado
+- Nuevo Modo de Envio Periodico
+- Error Arreglado de no Reconocer CONTROL en Algunaos Dispositivos
+- Pequeños Cambios en Salida de Consola
